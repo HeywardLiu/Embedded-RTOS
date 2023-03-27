@@ -30,7 +30,7 @@
 #define OS_MAX_TASKS             11    /* Max. number of tasks in your application ...                 */
                                        /* ... MUST be >= 2                                             */
 
-#define OS_LOWEST_PRIO           12    /* Defines the lowest priority that can be assigned ...         */
+#define OS_LOWEST_PRIO           63    /* Defines the lowest priority that can be assigned ...         */
                                        /* ... MUST NEVER be higher than 63!                            */
 
 #define OS_TASK_IDLE_STK_SIZE   512    /* Idle task stack size (# of OS_STK wide entries)              */

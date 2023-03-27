@@ -19,8 +19,8 @@
 */
 
 #define  TASK_STK_SIZE                 512       /* Size of each task's stacks (# of WORDs)            */
-#define  N_TASKS                        10       /* Number of identical tasks                          */
-// #define  TESTCASE_2                     1        /* Switch Testcase*/
+#define  N_TASKS                        2       /* Number of identical tasks                          */
+
 /*
 *********************************************************************************************************
 *                                               VARIABLES
@@ -28,8 +28,8 @@
 */
 typedef struct TASK_ARGS                               /* Arguments of real-time task                   */
 {
-    INT8U     compTime;
-    INT8U     period;
+    INT32U     compTime;
+    INT32U     period;
 } TASK_ARGS;
 
 OS_STK        TaskStk[N_TASKS][TASK_STK_SIZE];        /* Tasks stacks                                  */
@@ -58,7 +58,7 @@ static  void  TaskStartDisp(void);
 
 void  main (void)
 {
-    PC_DispClrScr(DISP_FGND_WHITE + DISP_BGND_BLACK);      /* Clear the screen                         */
+    // PC_DispClrScr(DISP_FGND_WHITE + DISP_BGND_BLACK);      /* Clear the screen                         */
 
     OSInit();                                              /* Initialize uC/OS-II                      */
 
@@ -68,6 +68,7 @@ void  main (void)
     // RandomSem   = OSSemCreate(1);                          /* Random number semaphore                  */
 
     OSTaskCreate(TaskStart, (void *)0, &TaskStartStk[TASK_STK_SIZE - 1], 0);
+
     OSStart();                                             /* Start multitasking                       */
 }
 
@@ -211,16 +212,17 @@ static  void  TaskStartCreateTasks (void)
     INT8U  i;
 
     TaskData[0].compTime = 1;                              /* Testcase 1 = {(1, 3), (3, 6)}            */
-    TaskData[0].period   = 3;
-    TaskData[1].compTime = 3;
-    TaskData[1].period   = 6;      
+    TaskData[0].period   = 2;
+    TaskData[1].compTime = 2;
+    TaskData[1].period   = 4;      
     
-    #ifdef TESTCASE_2                                      /* Testcase 2 = {(1, 3), (3, 6), (4, 9)}    */
-        TaskData[1].compTime = 4;
-        TaskData[1].period   = 9;
+    #if N_TASKS == 3                                       /* Testcase 2 = {(1, 3), (3, 6), (4, 9)}    */
+        TaskData[2].compTime = 4;
+        TaskData[2].period   = 9;
     #endif
 
-    row_size = 5;                                          /* Initialize the buffer                    */
+
+    row_size = N_TASKS + 3;                                /* Initialize the buffer                    */
     col_size = 4;
     pos = 0;
     print_pos = 0;
@@ -228,6 +230,7 @@ static  void  TaskStartCreateTasks (void)
     for(i=0; i<row_size; i++)
         buf[i] = (int*)malloc(sizeof(int)*col_size);
 
+    OSTimeSet(0);
     for (i = 0; i < N_TASKS; i++) {                        /* Create tasks (The highest priority = 1) */
         OSTaskCreate(Task, (void *)&TaskData[i], &TaskStk[i][TASK_STK_SIZE - 1], i + 1);                
     }
@@ -255,23 +258,22 @@ void Task (void *pdata)
     start = OSTimeGet();
     while(1)
     {
-        while(OSTCBCur->compTime) 
+        while(OSTCBCur->compTime > 0)
         {
             // Comsume compTime and do nothing
         }
-        end = OSTimeGet();
         
         OS_ENTER_CRITICAL()                               /* Disable interrupt to acquire current TCB  */
+        end = OSTimeGet();
         toDelay = (OSTCBCur->period) - (end - start);
-        start=start+(OSTCBCur->period);
+        start = start + (OSTCBCur->period);               /* Update to the next start time                */
         OSTCBCur->compTime = c;                           /* Reset CPU Time */
-        if(toDelay<0)
-            printf("Task3 deadline\n");
+        if(toDelay < 0)
+            printf("Task%d deadline\n", OSTCBCur->OSTCBPrio);
         else
-            if(OSTCBCur->OSTCBPrio==1)
+            if(OSTCBCur->OSTCBPrio == 1)
                 Print();
             OSTimeDly(toDelay);
-        OSTimeDly(toDelay);
         OS_EXIT_CRITICAL();
     }
 }
@@ -303,6 +305,7 @@ void Print(void)
     }
     print_pos = pos;
 }
+
 // void  Task (void *pdata)
 // {
 //     INT8U  x;
