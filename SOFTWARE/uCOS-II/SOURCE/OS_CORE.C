@@ -67,6 +67,7 @@ static  void  OS_InitRdyList(void);
 static  void  OS_InitTaskIdle(void);
 static  void  OS_InitTaskStat(void);
 static  void  OS_InitTCBList(void);
+INT8U EDFSched(void);
 
 /*$PAGE*/
 /*
@@ -168,6 +169,23 @@ void  OSIntEnter (void)
 *              2) Rescheduling is prevented when the scheduler is locked (see OS_SchedLock())
 *********************************************************************************************************
 */
+INT8U EDFSched(void) 
+{   
+    OS_TCB    *ptcb;
+    INT8U prioHighRdy = OS_IDLE_PRIO;
+    INT16U deadline=10000;
+    ptcb = OSTCBList;                                  /* Point at first TCB in TCB list           */
+    while(ptcb->OSTCBPrio==1 || ptcb->OSTCBPrio==2 || ptcb->OSTCBPrio==3 || ptcb->OSTCBPrio==0) {
+        if(ptcb->OSTCBStat==OS_STAT_RDY && !ptcb->OSTCBDly && ptcb->deadline<deadline) {
+            prioHighRdy = ptcb->OSTCBPrio;
+            deadline = ptcb->deadline;
+        }
+        ptcb = ptcb->OSTCBNext;                        /* Point at next TCB in TCB list            */
+    }
+    
+    return prioHighRdy;
+}
+
 
 void  OSIntExit (void)
 {
@@ -182,8 +200,10 @@ void  OSIntExit (void)
             OSIntNesting--;
         }
         if ((OSIntNesting == 0) && (OSLockNesting == 0)) { /* Reschedule only if all ISRs complete ... */
-            OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
-            OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
+            // OSIntExitY    = OSUnMapTbl[OSRdyGrp];          /* ... and not locked.                      */
+            // OSPrioHighRdy = (INT8U)((OSIntExitY << 3) + OSUnMapTbl[OSRdyTbl[OSIntExitY]]);
+
+            OSPrioHighRdy = EDFSched();                    /* Select the next task by EDF Scheduling   */
             if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy */
                 OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy];
 
@@ -304,15 +324,17 @@ void  OSStart (void)
 
 
     if (OSRunning == FALSE) {
-        y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
-        x             = OSUnMapTbl[OSRdyTbl[y]];
-        OSPrioHighRdy = (INT8U)((y << 3) + x);
-
-        buf[pos][0] = OSTimeGet();
-        buf[pos][1] = 0;
-        buf[pos][2] = OSPrioCur;
-        buf[pos][3] = OSPrioHighRdy;
-        pos = (pos+1)==row_size ? 0 : pos+1;
+        // y             = OSUnMapTbl[OSRdyGrp];        /* Find highest priority's task priority number   */
+        // x             = OSUnMapTbl[OSRdyTbl[y]];
+        // OSPrioHighRdy = (INT8U)((y << 3) + x);
+        
+        OSPrioHighRdy = 0;                    /* Select the next task by EDF Scheduling   */
+        
+        // buf[pos][0] = OSTimeGet();
+        // buf[pos][1] = 0;
+        // buf[pos][2] = OSPrioCur;
+        // buf[pos][3] = OSPrioHighRdy;
+        // pos = (pos+1)==row_size ? 0 : pos+1;
 
         OSPrioCur     = OSPrioHighRdy;
         OSTCBHighRdy  = OSTCBPrioTbl[OSPrioHighRdy]; /* Point to highest priority task ready to run    */
@@ -894,8 +916,10 @@ void  OS_Sched (void)
 
     OS_ENTER_CRITICAL();
     if ((OSIntNesting == 0) && (OSLockNesting == 0)) { /* Sched. only if all ISRs done & not locked    */
-        y             = OSUnMapTbl[OSRdyGrp];          /* Get pointer to HPT ready to run              */
-        OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
+        // y             = OSUnMapTbl[OSRdyGrp];          /* Get pointer to HPT ready to run              */
+        // OSPrioHighRdy = (INT8U)((y << 3) + OSUnMapTbl[OSRdyTbl[y]]);
+        
+        OSPrioHighRdy = EDFSched();                    /* Select the next task by EDF Scheduling   */
         if (OSPrioHighRdy != OSPrioCur) {              /* No Ctx Sw if current task is highest rdy     */
             OSTCBHighRdy = OSTCBPrioTbl[OSPrioHighRdy];
             

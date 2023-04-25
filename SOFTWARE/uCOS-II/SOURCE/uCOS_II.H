@@ -371,7 +371,8 @@ typedef struct os_tcb {
     OS_STK        *OSTCBStkPtr;        /* Pointer to current top of stack                              */
     INT8U         compTime;            /* CPU time of a periodic task                                  */
     INT8U         period;              /* Period of a periodic task                                    */
-
+    INT16U        deadline;            /* Deadline for EDF scheduling                                  */
+    
 #if OS_TASK_CREATE_EXT_EN > 0
     void          *OSTCBExtPtr;        /* Pointer to user definable data for TCB extension             */
     OS_STK        *OSTCBStkBottom;     /* Pointer to bottom of stack                                   */
